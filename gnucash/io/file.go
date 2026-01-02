@@ -121,10 +121,37 @@ func readXmlV2Id(decoder *xml.Decoder, start xml.StartElement) (gc.Id, error) {
 	return nil, fmt.Errorf("Invalid id type: %s", typeValue)
 }
 
+func readXmlV2Transaction(decoder *xml.Decoder, start xml.StartElement) (*gc.Transaction, error) {
+	fmt.Println("Reading a transaction")
+	trn := gc.Transaction{}
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		if se, ok := token.(xml.StartElement); ok {
+			if se.Name.Space == xmlNsTrn && se.Name.Local == "id" {
+				trn.Id, err = readXmlV2Id(decoder, se.Copy())
+				if err != nil {
+					return nil, err
+				}
+			} else if err = decoder.Skip(); err != nil {
+				return nil, err
+			}
+		} else if cd, ok := token.(xml.CharData); ok {
+			if !isXmlSpace(cd) {
+				return nil, errUnexpectedText
+			}
+		} else if _, ok = token.(xml.EndElement); ok {
+			break
+		}
+	}
+	return &trn, nil
+}
+
 func readXmlV2Book(decoder *xml.Decoder, start xml.StartElement) (*gc.Book, error) {
 	fmt.Println("Reading a book")
 	book := gc.Book{}
-
 	for {
 		token, err := decoder.Token()
 		if err != nil {
@@ -136,6 +163,21 @@ func readXmlV2Book(decoder *xml.Decoder, start xml.StartElement) (*gc.Book, erro
 				if err != nil {
 					return nil, err
 				}
+			} else if se.Name.Space == xmlNsCd && se.Name.Local == "count-data" {
+				countType, count, err := readXmlV2CountData(decoder, se.Copy())
+				if err != nil {
+					return nil, err
+				}
+				if countType == "transaction" {
+					trns := make([]gc.Transaction, count)
+					book.Transactions = trns[:0]
+				}
+			} else if se.Name.Space == xmlNsGnc && se.Name.Local == "transaction" {
+				trn, err := readXmlV2Transaction(decoder, se.Copy())
+				if err != nil {
+					return nil, err
+				}
+				book.Transactions = append(book.Transactions, *trn)
 			} else if err = decoder.Skip(); err != nil {
 				return nil, err
 			}

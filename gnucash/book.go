@@ -10,8 +10,13 @@ type Id interface {
 
 type Guid string
 
-type Book struct {
+type Transaction struct {
 	Id Id
+}
+
+type Book struct {
+	Id           Id
+	Transactions []Transaction
 }
 
 func (guid Guid) Equals(other Id) bool {

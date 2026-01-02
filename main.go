@@ -14,4 +14,5 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("Book id: %v\n", book.Id)
+	fmt.Printf("Book has %d transactions\n", len(book.Transactions))
 }
