@@ -4,8 +4,37 @@ import (
 	"time"
 )
 
+type Guid string
+
+type Numeric struct{ num, den int64 }
+
 type GDate struct {
 	Year  int
 	Month time.Month
 	Day   int
+}
+
+type Account struct {
+	Name           string
+	Id             Guid
+	HasDescription bool
+	Description    string
+	Parent         Guid
+}
+
+type CurrencyRef struct{ Space, Id string }
+
+type Split struct {
+	Id       Guid
+	Value    Numeric
+	Quantity Numeric
+	Account  string
+}
+
+type Transaction struct {
+	Version    string
+	Id         Guid
+	Currency   CurrencyRef
+	Num        string
+	DatePosted time.Time
 }
