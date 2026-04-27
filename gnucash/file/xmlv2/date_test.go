@@ -1,0 +1,50 @@
+package xmlv2
+
+import (
+	"encoding/xml"
+	"testing"
+	"time"
+	"trial_balance/gnucash/file/internal/xmlstub"
+	"trial_balance/gnucash/model"
+)
+
+func TestParseGDate(t *testing.T) {
+	tokens := []xml.Token{
+		xml.StartElement{xml.Name{Local: "gdate"}, nil},
+		xml.CharData("2026-04-25"),
+		xml.EndElement{xml.Name{"", "gdate"}},
+	}
+	decoder := xml.NewTokenDecoder(xmlstub.NewReader(tokens[1:]))
+
+	date, err := parseGDate(decoder, tokens[0].(xml.StartElement))
+	if err != nil {
+
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	expected := model.GDate{2026, 4, 25}
+	if date != expected {
+		t.Errorf("parseGDate() = %v; want %v", date, expected)
+	}
+}
+
+func TestParseTimeStamp(t *testing.T) {
+	tokens := []xml.Token{
+		xml.StartElement{xml.Name{"ts", "date"}, nil},
+		xml.CharData("2006-01-02 15:04:05 +0000"),
+		xml.EndElement{xml.Name{"ts", "date"}},
+	}
+	decoder := xml.NewTokenDecoder(xmlstub.NewReader(tokens[1:]))
+
+	ts, err := parseTimeStamp(decoder, tokens[0].(xml.StartElement))
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	expected := time.Date(2006, 1, 2, 15, 4, 5, 0, time.FixedZone("", 0))
+	if ts.Location() != expected.Location() {
+		t.Fatalf("parseTimeStamp() Location = %v, want %v", ts.Location(), expected.Location())
+	}
+	if !ts.Equal(expected) {
+		t.Fatalf("parseTimeStamp() = %v, want %v", ts, expected)
+	}
+}
