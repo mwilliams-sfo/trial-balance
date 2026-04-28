@@ -17,6 +17,7 @@ type Xml2Builder interface {
 	GDate(d model.GDate) Xml2Builder
 	TimeStamp(t time.Time) Xml2Builder
 	TimeSpec(t time.Time) Xml2Builder
+	Account(a model.Account) Xml2Builder
 	Build() []xml.Token
 }
 
@@ -68,6 +69,17 @@ func (b builder) TimeSpec(t time.Time) Xml2Builder {
 		StartElement("ts", "ns").
 		CharData(string(strconv.AppendInt(nil, int64(t.Nanosecond()), 10))).
 		EndElement("ts", "ns")
+}
+
+func (b builder) Account(a model.Account) Xml2Builder {
+	return b.
+		StartElement("gnc", "account").
+		StartElement("act", "name").
+		CharData(a.Name).
+		EndElement("act", "name").
+		Id("act", "id", a.Id).
+		Id("act", "parent", a.Parent).
+		EndElement("gnc", "account")
 }
 
 func (b builder) Build() []xml.Token {
