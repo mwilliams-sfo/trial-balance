@@ -15,8 +15,8 @@ func TestParseAccount(t *testing.T) {
 			xml.CharData("Assets"),
 			xml.EndElement{xml.Name{"act", "name"}},
 		).
-		Id(xml.Name{"act", "id"}, model.Guid("01234567890123456789012345678901")).
-		Id(xml.Name{"act", "parent"}, model.Guid("98765432109876543210987654321098")).
+		Id("act", "id", model.Guid("01234567890123456789012345678901")).
+		Id("act", "parent", model.Guid("98765432109876543210987654321098")).
 		Tokens(
 			xml.EndElement{xml.Name{"gnc", "account"}},
 		).

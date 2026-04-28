@@ -10,7 +10,10 @@ import (
 
 type Xml2Builder interface {
 	Tokens(ts ...xml.Token) Xml2Builder
-	Id(name xml.Name, guid model.Guid) Xml2Builder
+	StartElement(space, name string, attr ...xml.Attr) Xml2Builder
+	CharData(s string) Xml2Builder
+	EndElement(space, name string) Xml2Builder
+	Id(space, name string, guid model.Guid) Xml2Builder
 	GDate(d model.GDate) Xml2Builder
 	TimeStamp(t time.Time) Xml2Builder
 	TimeSpec(t time.Time) Xml2Builder
@@ -27,38 +30,44 @@ func (b builder) Tokens(ts ...xml.Token) Xml2Builder {
 	return append(b, ts...)
 }
 
-func (b builder) Id(name xml.Name, guid model.Guid) Xml2Builder {
-	start := xml.StartElement{
-		name,
-		[]xml.Attr{
-			{xml.Name{"", "guid"}, string(guid)},
-		},
-	}
-	return b.Tokens(start, start.End())
+func (b builder) StartElement(space, name string, attrs ...xml.Attr) Xml2Builder {
+	return b.Tokens(xml.StartElement{xml.Name{space, name}, attrs})
+}
+
+func (b builder) CharData(s string) Xml2Builder {
+	return b.Tokens(xml.CharData(s))
+}
+
+func (b builder) EndElement(space, name string) Xml2Builder {
+	return b.Tokens(xml.EndElement{xml.Name{space, name}})
+}
+
+func (b builder) Id(space, name string, guid model.Guid) Xml2Builder {
+	return b.
+		StartElement(space, name, xml.Attr{xml.Name{Local: "guid"}, string(guid)}).
+		EndElement(space, name)
 }
 
 func (b builder) GDate(d model.GDate) Xml2Builder {
-	return b.Tokens(
-		xml.StartElement{xml.Name{"", "gdate"}, nil},
-		xml.CharData(fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day)),
-		xml.EndElement{xml.Name{"", "gdate"}},
-	)
+	return b.
+		StartElement("", "gdate").
+		CharData(fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day)).
+		EndElement("", "gdate")
 }
 
 func (b builder) TimeStamp(t time.Time) Xml2Builder {
-	return b.Tokens(
-		xml.StartElement{xml.Name{"ts", "date"}, nil},
-		xml.CharData(t.Format("2006-01-02 15:04:05 -0700")),
-		xml.EndElement{xml.Name{"ts", "date"}},
-	)
+	return b.
+		StartElement("ts", "date").
+		CharData(t.Format("2006-01-02 15:04:05 -0700")).
+		EndElement("ts", "date")
 }
 
 func (b builder) TimeSpec(t time.Time) Xml2Builder {
-	return b.TimeStamp(t).Tokens(
-		xml.StartElement{xml.Name{"ts", "ns"}, nil},
-		xml.CharData(strconv.AppendInt(nil, int64(t.Nanosecond()), 10)),
-		xml.EndElement{xml.Name{"ts", "ns"}},
-	)
+	return b.
+		TimeStamp(t).
+		StartElement("ts", "ns").
+		CharData(string(strconv.AppendInt(nil, int64(t.Nanosecond()), 10))).
+		EndElement("ts", "ns")
 }
 
 func (b builder) Build() []xml.Token {
