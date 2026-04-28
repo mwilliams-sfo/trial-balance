@@ -32,9 +32,16 @@ type Split struct {
 }
 
 type Transaction struct {
-	Version    string
 	Id         Guid
 	Currency   CurrencyRef
 	Num        string
 	DatePosted time.Time
 }
+
+type Book struct {
+	Id           Guid
+	Accounts     []Account
+	Transactions []Transaction
+}
+
+type GnuCashXml []Book
