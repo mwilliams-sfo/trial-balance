@@ -10,6 +10,7 @@ import (
 
 type Xml2Builder interface {
 	Tokens(ts ...xml.Token) Xml2Builder
+	Id(name xml.Name, guid model.Guid) Xml2Builder
 	GDate(d model.GDate) Xml2Builder
 	TimeStamp(t time.Time) Xml2Builder
 	TimeSpec(t time.Time) Xml2Builder
@@ -24,6 +25,16 @@ func NewXml2Builder() Xml2Builder {
 
 func (b builder) Tokens(ts ...xml.Token) Xml2Builder {
 	return append(b, ts...)
+}
+
+func (b builder) Id(name xml.Name, guid model.Guid) Xml2Builder {
+	start := xml.StartElement{
+		name,
+		[]xml.Attr{
+			{xml.Name{"", "guid"}, string(guid)},
+		},
+	}
+	return b.Tokens(start, start.End())
 }
 
 func (b builder) GDate(d model.GDate) Xml2Builder {
