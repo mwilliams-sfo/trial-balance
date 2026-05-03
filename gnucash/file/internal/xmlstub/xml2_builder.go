@@ -13,6 +13,7 @@ type Xml2Builder interface {
 	StartElement(space, name string, attr ...xml.Attr) Xml2Builder
 	CharData(s string) Xml2Builder
 	EndElement(space, name string) Xml2Builder
+	TextElement(space, name string, attrs []xml.Attr, text string) Xml2Builder
 	Id(space, name string, guid model.Guid) Xml2Builder
 	GDate(d model.GDate) Xml2Builder
 	TimeStamp(t time.Time) Xml2Builder
@@ -43,6 +44,13 @@ func (b builder) EndElement(space, name string) Xml2Builder {
 	return b.Tokens(xml.EndElement{xml.Name{space, name}})
 }
 
+func (b builder) TextElement(space, name string, attrs []xml.Attr, text string) Xml2Builder {
+	return b.
+		StartElement(space, name, attrs...).
+		CharData(text).
+		EndElement(space, name)
+}
+
 func (b builder) Id(space, name string, guid model.Guid) Xml2Builder {
 	return b.
 		StartElement(space, name, xml.Attr{xml.Name{Local: "guid"}, string(guid)}).
@@ -50,33 +58,26 @@ func (b builder) Id(space, name string, guid model.Guid) Xml2Builder {
 }
 
 func (b builder) GDate(d model.GDate) Xml2Builder {
-	return b.
-		StartElement("", "gdate").
-		CharData(fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day)).
-		EndElement("", "gdate")
+	return b.TextElement("", "gdate", nil,
+		fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day))
 }
 
 func (b builder) TimeStamp(t time.Time) Xml2Builder {
-	return b.
-		StartElement("ts", "date").
-		CharData(t.Format("2006-01-02 15:04:05 -0700")).
-		EndElement("ts", "date")
+	return b.TextElement("ts", "date", nil,
+		t.Format("2006-01-02 15:04:05 -0700"))
 }
 
 func (b builder) TimeSpec(t time.Time) Xml2Builder {
 	return b.
 		TimeStamp(t).
-		StartElement("ts", "ns").
-		CharData(string(strconv.AppendInt(nil, int64(t.Nanosecond()), 10))).
-		EndElement("ts", "ns")
+		TextElement("ts", "ns", nil,
+			string(strconv.AppendInt(nil, int64(t.Nanosecond()), 10)))
 }
 
 func (b builder) Account(a model.Account) Xml2Builder {
 	return b.
 		StartElement("gnc", "account").
-		StartElement("act", "name").
-		CharData(a.Name).
-		EndElement("act", "name").
+		TextElement("act", "name", nil, a.Name).
 		Id("act", "id", a.Id).
 		Id("act", "parent", a.Parent).
 		EndElement("gnc", "account")
