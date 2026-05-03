@@ -7,36 +7,6 @@ import (
 	"trial_balance/gnucash/model"
 )
 
-func parseAccountTextChild(d *xml.Decoder, start xml.StartElement) (string, error) {
-	cd, err := requireCharData(d)
-	if err != nil {
-		return "", err
-	}
-	end, err := requireEndElement(d)
-	if err != nil {
-		return "", err
-	}
-	if end.Name != start.End().Name {
-		return "", fmt.Errorf("parseAccountTextChild: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
-	}
-	return string(cd), nil
-}
-
-func parseAccountGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error) {
-	var zero model.Guid
-	for _, attr := range start.Attr {
-		if attr.Name.Local == "guid" {
-			id := model.Guid(attr.Value)
-			err := skipContent(d, start)
-			if err != nil {
-				return zero, err
-			}
-			return id, nil
-		}
-	}
-	return zero, fmt.Errorf("<%s:%s>: guid attribute not found", start.Name.Space, start.Name.Local)
-}
-
 func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error) {
 	var zero, a model.Account
 	if start.Name != names.Account() {
@@ -47,14 +17,13 @@ func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error)
 	if err != nil {
 		return zero, err
 	}
-	switch x := tok.(type) {
-	case xml.StartElement:
-		text, err := parseAccountTextChild(d, x)
+	if nameStart, ok := tok.(xml.StartElement); ok {
+		text, err := parseTextElement(d, nameStart)
 		if err != nil {
-			return zero, err
+			return zero, fmt.Errorf("parseAccount: %w", err)
 		}
 		a.Name = text
-	default:
+	} else {
 		return zero, fmt.Errorf("parseAccount: name not found")
 	}
 
@@ -62,15 +31,13 @@ func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error)
 	if err != nil {
 		return zero, err
 	}
-	switch x := tok.(type) {
-	case xml.StartElement:
-
-		id, err := parseAccountGuid(d, x)
+	if idStart, ok := tok.(xml.StartElement); ok {
+		guid, err := parseGuid(d, idStart)
 		if err != nil {
-			return zero, err
+			return zero, fmt.Errorf("parseAccount: %w", err)
 		}
-		a.Id = id
-	default:
+		a.Id = guid
+	} else {
 		return zero, fmt.Errorf("parseAccount: id not found")
 	}
 
@@ -78,14 +45,13 @@ func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error)
 	if err != nil {
 		return zero, err
 	}
-	switch x := tok.(type) {
-	case xml.StartElement:
-		id, err := parseAccountGuid(d, x)
+	if parentStart, ok := tok.(xml.StartElement); ok {
+		guid, err := parseGuid(d, parentStart)
 		if err != nil {
-			return zero, err
+			return zero, fmt.Errorf("parseAccount: %w", err)
 		}
-		a.Parent = id
-	default:
+		a.Parent = guid
+	} else {
 		return zero, fmt.Errorf("parseAccount: parent not found")
 	}
 
