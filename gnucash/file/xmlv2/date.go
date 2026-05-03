@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"trial_balance/gnucash/file/xmlv2/names"
 	"trial_balance/gnucash/model"
 )
 
-var gDateName = xml.Name{"", "gdate"}
-
 func parseGDate(d *xml.Decoder, start xml.StartElement) (model.GDate, error) {
 	zero := model.GDate{}
-	if start.Name != gDateName {
+	if start.Name != names.GDate() {
 		return zero, fmt.Errorf("parseGDate: invalid start tag, expected <gdate>")
 	}
 
@@ -29,18 +28,16 @@ func parseGDate(d *xml.Decoder, start xml.StartElement) (model.GDate, error) {
 	if err != nil {
 		return zero, err
 	}
-	if end.Name != gDateName {
+	if end.Name != names.GDate() {
 		return zero, fmt.Errorf("parseGDate: invalid token, expected </gdate>")
 	}
 	return model.GDate{date.Year(), date.Month(), date.Day()}, nil
 
 }
 
-var timeStampName = xml.Name{"ts", "date"}
-
 func parseTimeStamp(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 	zero := time.Time{}
-	if start.Name != timeStampName {
+	if start.Name != names.TimeDate() {
 		return zero, fmt.Errorf("parseTimeStamp: invalid start tag")
 	}
 
@@ -57,16 +54,14 @@ func parseTimeStamp(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 	if err != nil {
 		return zero, err
 	}
-	if end.Name != timeStampName {
+	if end.Name != names.TimeDate() {
 		return zero, fmt.Errorf("parseTimeStamp: invalid token, expected </ts:date>")
 	}
 	return ts, nil
 }
 
-var nsName = xml.Name{"ts", "ns"}
-
 func parseNs(d *xml.Decoder, start xml.StartElement) (int, error) {
-	if start.Name != nsName {
+	if start.Name != names.TimeNs() {
 		return 0, fmt.Errorf("parseNs: invalid start tag")
 	}
 	cd, err := requireCharData(d)
@@ -81,7 +76,7 @@ func parseNs(d *xml.Decoder, start xml.StartElement) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if end.Name != nsName {
+	if end.Name != names.TimeNs() {
 		return 0, fmt.Errorf("parseNs: invalid token, expected </ts:ns>")
 	}
 	return int(ns), nil
@@ -97,7 +92,7 @@ func parseTimeSpec(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 	if err != nil {
 		return zero, err
 	}
-	if nsStart.Name != nsName {
+	if nsStart.Name != names.TimeNs() {
 		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <ts:ns>")
 	}
 	ns, err := parseNs(d, nsStart)

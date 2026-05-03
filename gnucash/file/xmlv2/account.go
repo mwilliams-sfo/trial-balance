@@ -3,14 +3,8 @@ package xmlv2
 import (
 	"encoding/xml"
 	"fmt"
+	"trial_balance/gnucash/file/xmlv2/names"
 	"trial_balance/gnucash/model"
-)
-
-var (
-	accountName       = xml.Name{"gnc", "account"}
-	accountNameName   = xml.Name{"act", "name"}
-	accountIdName     = xml.Name{"act", "id"}
-	accountParentName = xml.Name{"act", "parent"}
 )
 
 func parseAccountTextChild(d *xml.Decoder, start xml.StartElement) (string, error) {
@@ -45,11 +39,11 @@ func parseAccountGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error
 
 func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error) {
 	var zero, a model.Account
-	if start.Name != accountName {
+	if start.Name != names.Account() {
 		return zero, fmt.Errorf("parseAccount: invalid start tag")
 	}
 
-	tok, err := findChildElement(d, start, accountNameName)
+	tok, err := findChildElement(d, start, names.AccountName())
 	if err != nil {
 		return zero, err
 	}
@@ -64,7 +58,7 @@ func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error)
 		return zero, fmt.Errorf("parseAccount: name not found")
 	}
 
-	tok, err = findChildElement(d, start, accountIdName)
+	tok, err = findChildElement(d, start, names.AccountId())
 	if err != nil {
 		return zero, err
 	}
@@ -80,7 +74,7 @@ func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error)
 		return zero, fmt.Errorf("parseAccount: id not found")
 	}
 
-	tok, err = findChildElement(d, start, accountParentName)
+	tok, err = findChildElement(d, start, names.AccountParent())
 	if err != nil {
 		return zero, err
 	}
