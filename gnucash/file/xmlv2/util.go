@@ -8,40 +8,40 @@ import (
 )
 
 func requireStartElement(d *xml.Decoder) (xml.StartElement, error) {
-	zero := xml.StartElement{}
+	var start xml.StartElement
 	tok, err := d.RawToken()
 	if err != nil {
-		return zero, err
+		return start, err
 	}
-	start, ok := tok.(xml.StartElement)
-	if !ok {
-		return zero, fmt.Errorf("Invalid token, expected start tag")
+	var ok bool
+	if start, ok = tok.(xml.StartElement); !ok {
+		return start, fmt.Errorf("Invalid token, expected start tag")
 	}
 	return start, nil
 }
 
 func requireCharData(d *xml.Decoder) (xml.CharData, error) {
-	zero := xml.CharData("")
+	var cd xml.CharData
 	tok, err := d.RawToken()
 	if err != nil {
-		return zero, err
+		return cd, err
 	}
-	cd, ok := tok.(xml.CharData)
-	if !ok {
-		return zero, fmt.Errorf("Invalid token, expected character data")
+	var ok bool
+	if cd, ok = tok.(xml.CharData); !ok {
+		return cd, fmt.Errorf("Invalid token, expected character data")
 	}
 	return cd, nil
 }
 
 func requireEndElement(d *xml.Decoder) (xml.EndElement, error) {
-	zero := xml.EndElement{}
+	var end xml.EndElement
 	tok, err := d.RawToken()
 	if err != nil {
-		return zero, err
+		return end, err
 	}
-	end, ok := tok.(xml.EndElement)
-	if !ok {
-		return zero, fmt.Errorf("Invalid token, expected end tag")
+	var ok bool
+	if end, ok = tok.(xml.EndElement); !ok {
+		return end, fmt.Errorf("Invalid token, expected end tag")
 	}
 	return end, nil
 }
@@ -69,4 +69,50 @@ func requireGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error) {
 		}
 	}
 	return zero, fmt.Errorf("guid attribute not found")
+}
+
+func skipContent(d *xml.Decoder, start xml.StartElement) error {
+	for {
+		tok, err := d.RawToken()
+		if err != nil {
+			return err
+		}
+		switch x := tok.(type) {
+		case xml.StartElement:
+			err = skipContent(d, x)
+			if err != nil {
+				return err
+			}
+		case xml.EndElement:
+			if x.Name != start.Name {
+				return fmt.Errorf("Mismatched end tag: </%s:%s>", x.Name.Space, x.Name.Local)
+			}
+			return nil
+		}
+	}
+}
+
+func findChildElement(d *xml.Decoder, parent xml.StartElement, name xml.Name) (xml.Token, error) {
+	var zero xml.Token
+	for {
+		tok, err := d.RawToken()
+		if err != nil {
+			return zero, err
+		}
+		switch x := tok.(type) {
+		case xml.StartElement:
+			if x.Name == name {
+				return x, nil
+			}
+			err = skipContent(d, x)
+			if err != nil {
+				return zero, err
+			}
+		case xml.EndElement:
+			if x.Name != parent.Name {
+				return zero, fmt.Errorf("Mismatched end tag: </%s:%s>", x.Name.Space, x.Name.Local)
+			}
+			return x, nil
+		}
+	}
 }

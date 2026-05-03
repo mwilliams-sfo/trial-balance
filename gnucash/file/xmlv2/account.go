@@ -13,14 +13,7 @@ var (
 	accountParentName = xml.Name{"act", "parent"}
 )
 
-func parseAccountName(d *xml.Decoder) (string, error) {
-	start, err := requireStartElement(d)
-	if err != nil {
-		return "", err
-	}
-	if start.Name != accountNameName {
-		return "", fmt.Errorf("parseAccountName: invalid start tag")
-	}
+func parseAccountTextChild(d *xml.Decoder, start xml.StartElement) (string, error) {
 	cd, err := requireCharData(d)
 	if err != nil {
 		return "", err
@@ -30,83 +23,81 @@ func parseAccountName(d *xml.Decoder) (string, error) {
 		return "", err
 	}
 	if end.Name != start.End().Name {
-		return "", fmt.Errorf("parseAccountName: invalid token, expected </act:name>")
+		return "", fmt.Errorf("parseAccountTextChild: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
 	}
 	return string(cd), nil
 }
 
+func parseAccountGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error) {
+	var zero model.Guid
+	for _, attr := range start.Attr {
+		if attr.Name.Local == "guid" {
+			id := model.Guid(attr.Value)
+			err := skipContent(d, start)
+			if err != nil {
+				return zero, err
+			}
+			return id, nil
+		}
+	}
+	return zero, fmt.Errorf("<%s:%s>: guid attribute not found", start.Name.Space, start.Name.Local)
+}
+
 func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error) {
-	var zero model.Account
+	var zero, a model.Account
 	if start.Name != accountName {
 		return zero, fmt.Errorf("parseAccount: invalid start tag")
 	}
 
-	name, err := parseAccountName(d)
-	if err != nil {
-		return zero, fmt.Errorf("parseAccount: invalid name: %w", err)
-	}
-	a := model.Account{}
-	a.Name = name
-
-	childStart, err := requireStartElement(d)
+	tok, err := findChildElement(d, start, accountNameName)
 	if err != nil {
 		return zero, err
 	}
-	if childStart.Name != accountIdName {
-		return zero, fmt.Errorf("parseAccount: invalid token, expected <act:id>")
-	}
-	a.Id, err = requireGuid(d, childStart)
-	if err != nil {
-		return zero, fmt.Errorf("parseAccount: invalid id: %w", err)
-	}
-
-	depth := 1
-parentLoop:
-	for {
-		tok, err := d.RawToken()
+	switch x := tok.(type) {
+	case xml.StartElement:
+		text, err := parseAccountTextChild(d, x)
 		if err != nil {
 			return zero, err
 		}
-		switch x := tok.(type) {
-		case xml.StartElement:
-			depth++
-			if x.Name == accountParentName {
-				childStart = x
-				break parentLoop
-			}
-		case xml.EndElement:
-			depth--
-			if depth == 0 {
-				return zero, fmt.Errorf("parseAccount: parent id not found")
-			}
-		}
-	}
-	a.Parent, err = requireGuid(d, childStart)
-	if err != nil {
-		return zero, fmt.Errorf("parseAccount: invalid parent id: %w", err)
+		a.Name = text
+	default:
+		return zero, fmt.Errorf("parseAccount: name not found")
 	}
 
-	var end xml.EndElement
-	depth = 1
-endLoop:
-	for {
-		tok, err := d.RawToken()
+	tok, err = findChildElement(d, start, accountIdName)
+	if err != nil {
+		return zero, err
+	}
+	switch x := tok.(type) {
+	case xml.StartElement:
+
+		id, err := parseAccountGuid(d, x)
 		if err != nil {
 			return zero, err
 		}
-		switch x := tok.(type) {
-		case xml.StartElement:
-			depth++
-		case xml.EndElement:
-			depth--
-			if depth == 0 {
-				end = x
-				break endLoop
-			}
-		}
+		a.Id = id
+	default:
+		return zero, fmt.Errorf("parseAccount: id not found")
 	}
-	if end != start.End() {
-		return zero, fmt.Errorf("parseAccount: invalid token, expected </gnc:account>")
+
+	tok, err = findChildElement(d, start, accountParentName)
+	if err != nil {
+		return zero, err
+	}
+	switch x := tok.(type) {
+	case xml.StartElement:
+		id, err := parseAccountGuid(d, x)
+		if err != nil {
+			return zero, err
+		}
+		a.Parent = id
+	default:
+		return zero, fmt.Errorf("parseAccount: parent not found")
+	}
+
+	err = skipContent(d, start)
+	if err != nil {
+		return zero, err
 	}
 	return a, nil
 }
