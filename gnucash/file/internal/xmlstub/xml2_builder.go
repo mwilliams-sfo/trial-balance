@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-	"trial_balance/gnucash/model"
+	"trial_balance/gnucash/file/xmlv2/model"
 )
 
 type Xml2Builder interface {

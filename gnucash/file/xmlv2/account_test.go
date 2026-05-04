@@ -4,7 +4,7 @@ import (
 	"encoding/xml"
 	"testing"
 	"trial_balance/gnucash/file/internal/xmlstub"
-	"trial_balance/gnucash/model"
+	"trial_balance/gnucash/file/xmlv2/model"
 )
 
 func TestParseAccount(t *testing.T) {

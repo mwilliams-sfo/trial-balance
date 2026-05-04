@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"trial_balance/gnucash/file/xmlv2/model"
 	"trial_balance/gnucash/file/xmlv2/names"
-	"trial_balance/gnucash/model"
 )
 
 func parseGDate(d *xml.Decoder, start xml.StartElement) (model.GDate, error) {

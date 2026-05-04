@@ -3,8 +3,8 @@ package xmlv2
 import (
 	"encoding/xml"
 	"fmt"
+	"trial_balance/gnucash/file/xmlv2/model"
 	"trial_balance/gnucash/file/xmlv2/names"
-	"trial_balance/gnucash/model"
 )
 
 func parseAccount(d *xml.Decoder, start xml.StartElement) (model.Account, error) {

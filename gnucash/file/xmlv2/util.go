@@ -4,8 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"strings"
+	"trial_balance/gnucash/file/xmlv2/model"
 	"trial_balance/gnucash/file/xmlv2/names"
-	"trial_balance/gnucash/model"
 )
 
 func skipContent(d *xml.Decoder, start xml.StartElement) error {
