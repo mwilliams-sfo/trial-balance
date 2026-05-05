@@ -25,6 +25,6 @@ var (
 	TimeDate = makeName("ts", "date")
 	TimeNs   = makeName("ts", "ns")
 
-	GDate    = makeName("", "gdate")
-	GuidAttr = makeName("", "guid")
+	GDate      = makeName("", "gdate")
+	IdTypeAttr = makeName("", "type")
 )

@@ -82,22 +82,41 @@ func isValidGuid(s string) bool {
 
 func parseGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error) {
 	var zero, guid model.Guid
-attrLoop:
+	var idType string
+typeLoop:
 	for i := 0; ; i++ {
-		switch {
-		case i == len(start.Attr):
-			return zero, fmt.Errorf("parseGuid: guid attribute not found")
-		case start.Attr[i].Name == names.GuidAttr():
-			if !isValidGuid(start.Attr[i].Value) {
-				return zero, fmt.Errorf("parseGuid: invalid guid")
-			}
-			guid = model.Guid(start.Attr[i].Value)
-			break attrLoop
+		if i == len(start.Attr) {
+			return zero, fmt.Errorf("parseGuid: type attribute not found")
+		}
+		if start.Attr[i].Name == names.IdTypeAttr() {
+			idType = start.Attr[i].Value
+			break typeLoop
 		}
 	}
-	err := skipContent(d, start)
-	if err != nil {
-		return zero, err
+	if idType != "guid" {
+		return zero, fmt.Errorf("parseGuid: invaid type")
 	}
+
+	tok, err := d.RawToken()
+	if err != nil {
+		return zero, fmt.Errorf("parseGuid: %w", err)
+	}
+	if cd, ok := tok.(xml.CharData); ok {
+		if !isValidGuid(string(cd)) {
+			return zero, fmt.Errorf("parseGuid: invalid guid")
+		}
+		guid = model.Guid(string(cd))
+	} else {
+		return zero, fmt.Errorf("parseGuid: invalid token, expected char data")
+	}
+
+	tok, err = d.RawToken()
+	if err != nil {
+		return zero, fmt.Errorf("parseGuid: %w", err)
+	}
+	if end, ok := tok.(xml.EndElement); !ok || end.Name != start.Name {
+		return zero, fmt.Errorf("parseGuid: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
+	}
+
 	return guid, nil
 }

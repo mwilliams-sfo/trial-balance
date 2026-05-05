@@ -14,7 +14,7 @@ type Xml2Builder interface {
 	CharData(s string) Xml2Builder
 	EndElement(space, name string) Xml2Builder
 	TextElement(space, name string, attrs []xml.Attr, text string) Xml2Builder
-	Id(space, name string, guid model.Guid) Xml2Builder
+	Guid(space, name string, guid model.Guid) Xml2Builder
 	GDate(d model.GDate) Xml2Builder
 	TimeStamp(t time.Time) Xml2Builder
 	TimeSpec(t time.Time) Xml2Builder
@@ -51,9 +51,14 @@ func (b builder) TextElement(space, name string, attrs []xml.Attr, text string) 
 		EndElement(space, name)
 }
 
-func (b builder) Id(space, name string, guid model.Guid) Xml2Builder {
+func (b builder) Guid(space, name string, guid model.Guid) Xml2Builder {
 	return b.
-		StartElement(space, name, xml.Attr{xml.Name{Local: "guid"}, string(guid)}).
+		StartElement(space, name,
+			xml.Attr{
+				Name:  xml.Name{Local: "type"},
+				Value: "guid",
+			}).
+		CharData(string(guid)).
 		EndElement(space, name)
 }
 
@@ -78,8 +83,8 @@ func (b builder) Account(a model.Account) Xml2Builder {
 	return b.
 		StartElement("gnc", "account").
 		TextElement("act", "name", nil, a.Name).
-		Id("act", "id", a.Id).
-		Id("act", "parent", a.Parent).
+		Guid("act", "id", a.Id).
+		Guid("act", "parent", a.Parent).
 		EndElement("gnc", "account")
 }
 

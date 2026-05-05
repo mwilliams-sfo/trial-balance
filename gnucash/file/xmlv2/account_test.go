@@ -11,8 +11,8 @@ func TestParseAccount(t *testing.T) {
 	tokens := xmlstub.NewXml2Builder().
 		StartElement("gnc", "account").
 		TextElement("act", "name", nil, "Assets").
-		Id("act", "id", model.Guid("01234567890123456789012345678901")).
-		Id("act", "parent", model.Guid("98765432109876543210987654321098")).
+		Guid("act", "id", model.Guid("01234567890123456789012345678901")).
+		Guid("act", "parent", model.Guid("98765432109876543210987654321098")).
 		EndElement("gnc", "account").
 		Build()
 	decoder := xml.NewTokenDecoder(xmlstub.NewReader(tokens[1:]))
