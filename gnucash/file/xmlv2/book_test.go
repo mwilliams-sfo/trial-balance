@@ -3,8 +3,8 @@ package xmlv2
 import (
 	"encoding/xml"
 	"testing"
-	"trial_balance/gnucash/file/internal/xmlstub"
 	"trial_balance/gnucash/file/xmlv2/model"
+	"trial_balance/gnucash/file/xmlv2/xmltest"
 )
 
 func TestParseBook(t *testing.T) {
@@ -18,15 +18,16 @@ func TestParseBook(t *testing.T) {
 			},
 		},
 	}
-	tokens := xmlstub.NewXml2Builder().
+	decoder := xmltest.NewBuilder().
 		StartElement("gnc", "book").
 		Guid("book", "id", expected.Id).
 		Account(expected.Accounts[0]).
 		EndElement("gnc", "book").
-		Build()
-	decoder := xml.NewTokenDecoder(xmlstub.NewReader(tokens[1:]))
+		BuildDecoder()
 
-	book, err := parseBook(decoder, tokens[0].(xml.StartElement))
+	tok, _ := decoder.RawToken()
+	book, err := parseBook(decoder, tok.(xml.StartElement))
+
 	if err != nil {
 		t.Fatal(err)
 	}
