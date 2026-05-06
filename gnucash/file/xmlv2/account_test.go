@@ -3,24 +3,24 @@ package xmlv2
 import (
 	"encoding/xml"
 	"testing"
-	"trial_balance/gnucash/file/internal/xmlstub"
 	"trial_balance/gnucash/file/xmlv2/model"
+	"trial_balance/gnucash/file/xmlv2/xmltest"
 )
 
 func TestParseAccount(t *testing.T) {
-	tokens := xmlstub.NewXml2Builder().
+	decoder := xmltest.NewBuilder().
 		StartElement("gnc", "account").
 		TextElement("act", "name", nil, "Assets").
 		Guid("act", "id", model.Guid("01234567890123456789012345678901")).
 		Guid("act", "parent", model.Guid("98765432109876543210987654321098")).
 		EndElement("gnc", "account").
-		Build()
-	decoder := xml.NewTokenDecoder(xmlstub.NewReader(tokens[1:]))
+		BuildDecoder()
 
-	account, err := parseAccount(decoder, tokens[0].(xml.StartElement))
+	tok, _ := decoder.RawToken()
+	account, err := parseAccount(decoder, tok.(xml.StartElement))
 
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		t.Fatal(err)
 	}
 	expected := model.Account{
 		Name:   "Assets",
