@@ -44,4 +44,4 @@ type Book struct {
 	Transactions []Transaction
 }
 
-type GnuCashXml []Book
+type GnuCash []Book

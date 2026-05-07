@@ -14,8 +14,6 @@ var (
 	Book      = makeName("gnc", "book")
 	Account   = makeName("gnc", "account")
 
-	CdTypeAttr = makeName("cd", "type")
-
 	BookId = makeName("book", "id")
 
 	AccountName   = makeName("act", "name")
@@ -25,6 +23,8 @@ var (
 	TimeDate = makeName("ts", "date")
 	TimeNs   = makeName("ts", "ns")
 
-	GDate      = makeName("", "gdate")
+	GDate = makeName("", "gdate")
+
+	CdTypeAttr = makeName("cd", "type")
 	IdTypeAttr = makeName("", "type")
 )

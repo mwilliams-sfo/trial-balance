@@ -3,6 +3,7 @@ package xmlv2
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
 	"strings"
 	"trial_balance/gnucash/file/xmlv2/model"
 	"trial_balance/gnucash/file/xmlv2/names"
@@ -54,11 +55,20 @@ func findChildElement(d *xml.Decoder, parent xml.StartElement, name xml.Name) (x
 	}
 }
 
+func findAttr(start xml.StartElement, name xml.Name) (int, error) {
+	for i, attr := range start.Attr {
+		if attr.Name == name {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("Attribute %s:%s not found", name.Space, name.Local)
+}
+
 func parseTextElement(d *xml.Decoder, start xml.StartElement) (string, error) {
 	var text string
 	tok, err := d.RawToken()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parseTextElement: %w", err)
 	}
 	if cd, ok := tok.(xml.CharData); ok {
 		text = string(cd)
@@ -67,9 +77,26 @@ func parseTextElement(d *xml.Decoder, start xml.StartElement) (string, error) {
 	}
 	err = skipContent(d, start)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parseTextElement: %w", err)
 	}
 	return text, nil
+}
+
+func parseCountData(d *xml.Decoder, start xml.StartElement) (string, int, error) {
+	i, err := findAttr(start, names.CdTypeAttr())
+	if err != nil {
+		return "", 0, fmt.Errorf("parseCountData: %w", err)
+	}
+	typeValue := start.Attr[i].Value
+	text, err := parseTextElement(d, start)
+	if err != nil {
+		return "", 0, fmt.Errorf("parseCountData: %w", err)
+	}
+	count, err := strconv.ParseInt(text, 10, 0)
+	if err != nil {
+		return "", 0, fmt.Errorf("parseCountData: %w", err)
+	}
+	return typeValue, int(count), nil
 }
 
 func isGuidChar(r rune) bool {
@@ -81,42 +108,20 @@ func isValidGuid(s string) bool {
 }
 
 func parseGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error) {
-	var zero, guid model.Guid
-	var idType string
-typeLoop:
-	for i := 0; ; i++ {
-		if i == len(start.Attr) {
-			return zero, fmt.Errorf("parseGuid: type attribute not found")
-		}
-		if start.Attr[i].Name == names.IdTypeAttr() {
-			idType = start.Attr[i].Value
-			break typeLoop
-		}
+	var zero model.Guid
+	i, err := findAttr(start, names.IdTypeAttr())
+	if err != nil {
+		return zero, fmt.Errorf("parseGuid: %w", err)
 	}
-	if idType != "guid" {
+	if start.Attr[i].Value != "guid" {
 		return zero, fmt.Errorf("parseGuid: invaid type")
 	}
-
-	tok, err := d.RawToken()
+	text, err := parseTextElement(d, start)
 	if err != nil {
 		return zero, fmt.Errorf("parseGuid: %w", err)
 	}
-	if cd, ok := tok.(xml.CharData); ok {
-		if !isValidGuid(string(cd)) {
-			return zero, fmt.Errorf("parseGuid: invalid guid")
-		}
-		guid = model.Guid(string(cd))
-	} else {
-		return zero, fmt.Errorf("parseGuid: invalid token, expected char data")
+	if !isValidGuid(text) {
+		return zero, fmt.Errorf("parseGuid: invalid guid")
 	}
-
-	tok, err = d.RawToken()
-	if err != nil {
-		return zero, fmt.Errorf("parseGuid: %w", err)
-	}
-	if end, ok := tok.(xml.EndElement); !ok || end.Name != start.Name {
-		return zero, fmt.Errorf("parseGuid: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
-	}
-
-	return guid, nil
+	return model.Guid(text), nil
 }
