@@ -3,10 +3,18 @@ package xmlv2
 import (
 	"encoding/xml"
 	"fmt"
-	"strings"
 	"trial_balance/gnucash/file/xmlv2/model"
 	"trial_balance/gnucash/file/xmlv2/names"
 )
+
+func formattedName(name xml.Name) string {
+	s := ""
+	if name.Space != "" {
+		s += name.Space + ":"
+	}
+	s += name.Local
+	return s
+}
 
 func skipContent(d *xml.Decoder, start xml.StartElement) error {
 	for {
@@ -27,6 +35,15 @@ func skipContent(d *xml.Decoder, start xml.StartElement) error {
 			return nil
 		}
 	}
+}
+
+func findAttr(start xml.StartElement, name xml.Name) (int, error) {
+	for i, attr := range start.Attr {
+		if attr.Name == name {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("Attribute %s not found", formattedName(name))
 }
 
 func findChildElement(d *xml.Decoder, parent xml.StartElement, name xml.Name) (xml.Token, error) {
@@ -72,51 +89,35 @@ func parseTextElement(d *xml.Decoder, start xml.StartElement) (string, error) {
 	return text, nil
 }
 
-func isGuidChar(r rune) bool {
-	return '0' <= r && r <= '9' || 'a' <= r && r <= 'f'
-}
-
-func isValidGuid(s string) bool {
-	return len(s) == 32 && strings.IndexFunc(s, func(r rune) bool { return !isGuidChar(r) }) == -1
+func validateGuid(s string) error {
+	if len(s) != 32 {
+		return fmt.Errorf("validateGuid: invalid length")
+	}
+	for _, r := range s {
+		if !('0' <= r && r <= '9' || 'a' <= r && r <= 'f') {
+			return fmt.Errorf("validateGuid: invalid character")
+		}
+	}
+	return nil
 }
 
 func parseGuid(d *xml.Decoder, start xml.StartElement) (model.Guid, error) {
-	var zero, guid model.Guid
-	var idType string
-typeLoop:
-	for i := 0; ; i++ {
-		if i == len(start.Attr) {
-			return zero, fmt.Errorf("parseGuid: type attribute not found")
-		}
-		if start.Attr[i].Name == names.IdTypeAttr() {
-			idType = start.Attr[i].Value
-			break typeLoop
-		}
+	var zero model.Guid
+	i, err := findAttr(start, names.IdTypeAttr())
+	if err != nil {
+		return zero, fmt.Errorf("parseGuid: %w", err)
 	}
+	idType := start.Attr[i].Value
 	if idType != "guid" {
-		return zero, fmt.Errorf("parseGuid: invaid type")
+		return zero, fmt.Errorf("parseGuid: unrecognized id type %s", idType)
 	}
-
-	tok, err := d.RawToken()
+	text, err := parseTextElement(d, start)
 	if err != nil {
 		return zero, fmt.Errorf("parseGuid: %w", err)
 	}
-	if cd, ok := tok.(xml.CharData); ok {
-		if !isValidGuid(string(cd)) {
-			return zero, fmt.Errorf("parseGuid: invalid guid")
-		}
-		guid = model.Guid(string(cd))
-	} else {
-		return zero, fmt.Errorf("parseGuid: invalid token, expected char data")
-	}
-
-	tok, err = d.RawToken()
+	err = validateGuid(text)
 	if err != nil {
 		return zero, fmt.Errorf("parseGuid: %w", err)
 	}
-	if end, ok := tok.(xml.EndElement); !ok || end.Name != start.Name {
-		return zero, fmt.Errorf("parseGuid: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
-	}
-
-	return guid, nil
+	return model.Guid(text), nil
 }
