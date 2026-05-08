@@ -10,6 +10,8 @@ func makeName(space, local string) func() xml.Name {
 }
 
 var (
+	GncV2 = makeName("", "gnc-v2")
+
 	CountData = makeName("gnc", "count-data")
 	Book      = makeName("gnc", "book")
 	Account   = makeName("gnc", "account")
