@@ -23,52 +23,52 @@ func parseGDate(d *xml.Decoder, start xml.StartElement) (model.GDate, error) {
 
 }
 
-func parseTimeStamp(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
-	var zero time.Time
-	if start.Name != names.TimeDate() {
-		return zero, fmt.Errorf("parseTimeStamp: invalid start tag")
-	}
-	text, err := parseTextElement(d, start)
-	if err != nil {
-		return zero, fmt.Errorf("parseTimeStamp: %w", err)
-	}
-	ts, err := time.Parse("2006-01-02 15:04:05 -0700", text)
-	return ts, nil
-}
-
-func parseNs(d *xml.Decoder, start xml.StartElement) (int, error) {
-	if start.Name != names.TimeNs() {
-		return 0, fmt.Errorf("parseNs: invalid start tag")
-	}
-	text, err := parseTextElement(d, start)
-	if err != nil {
-		return 0, fmt.Errorf("parseNs: %w", err)
-	}
-	ns, err := strconv.ParseInt(text, 10, 0)
-	if err != nil || ns < 0 || 999_999_999 < ns {
-		return 0, fmt.Errorf("parseNs: invalid nanoseconds")
-	}
-	return int(ns), nil
-}
-
 func parseTimeSpec(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 	var zero time.Time
-	ts, err := parseTimeStamp(d, start)
-	if err != nil {
-		return zero, fmt.Errorf("parseTimeSpec: %w", err)
-	}
+
 	tok, err := d.RawToken()
 	if err != nil {
 		return zero, fmt.Errorf("parseTimeSpec: %w", err)
 	}
-	if nsStart, ok := tok.(xml.StartElement); ok && nsStart.Name == names.TimeNs() {
-		ns, err := parseNs(d, nsStart)
-		if err != nil {
-			return zero, fmt.Errorf("parseTimeStamp: %w", err)
-		}
-		ts = ts.Add(time.Duration(ns))
-	} else {
-		return zero, fmt.Errorf("parseTimeStamp: invalid token, expected <ts:ns>")
+	childStart, ok := tok.(xml.StartElement)
+	if !ok || childStart.Name != names.TimeDate() {
+		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <ts:date>")
 	}
-	return ts, nil
+	text, err := parseTextElement(d, childStart)
+	if err != nil {
+		return zero, fmt.Errorf("parseTimeSpec: %w", err)
+	}
+	t, err := time.Parse("2006-01-02 15:04:05 -0700", text)
+	if err != nil {
+		return zero, fmt.Errorf("parseTimeSpec: %w", err)
+	}
+
+	tok, err = d.RawToken()
+	if err != nil {
+		return zero, fmt.Errorf("parseTimeSpec: %w", err)
+	}
+	childStart, ok = tok.(xml.StartElement)
+	if ok {
+		if childStart.Name != names.TimeNs() {
+			return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <ts:ns>")
+		}
+		text, err = parseTextElement(d, childStart)
+		if err != nil {
+			return zero, fmt.Errorf("parseTimeSpec: %w", err)
+		}
+		ns, err := strconv.ParseInt(text, 10, 0)
+		if err != nil || ns < 0 || ns > 999_999_999 {
+			return zero, fmt.Errorf("parseTimeSpec: invalid nanoseconds")
+		}
+		t = t.Add(time.Duration(ns))
+		tok, err = d.RawToken()
+		if err != nil {
+			return zero, fmt.Errorf("parseTimeSpec: %w", err)
+		}
+	}
+	end, ok := tok.(xml.EndElement)
+	if !ok || end.Name != start.Name {
+		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
+	}
+	return t, nil
 }
