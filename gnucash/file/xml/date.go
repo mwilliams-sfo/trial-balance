@@ -1,12 +1,12 @@
-package xmlv2
+package xml
 
 import (
 	"encoding/xml"
 	"fmt"
 	"strconv"
 	"time"
-	"trial_balance/gnucash/file/xmlv2/model"
-	"trial_balance/gnucash/file/xmlv2/names"
+	"trial_balance/gnucash/file/xml/model"
+	"trial_balance/gnucash/file/xml/names"
 )
 
 func parseGDate(d *xml.Decoder, start xml.StartElement) (model.GDate, error) {

@@ -1,10 +1,10 @@
-package xmlv2
+package xml
 
 import (
 	"encoding/xml"
 	"fmt"
-	"trial_balance/gnucash/file/xmlv2/model"
-	"trial_balance/gnucash/file/xmlv2/names"
+	"trial_balance/gnucash/file/xml/model"
+	"trial_balance/gnucash/file/xml/names"
 )
 
 func formattedName(name xml.Name) string {

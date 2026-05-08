@@ -1,10 +1,10 @@
-package xmlv2
+package xml
 
 import (
 	"encoding/xml"
 	"testing"
-	"trial_balance/gnucash/file/xmlv2/model"
-	"trial_balance/gnucash/file/xmlv2/xmltest"
+	"trial_balance/gnucash/file/xml/model"
+	"trial_balance/gnucash/file/xml/xmltest"
 )
 
 func TestParseAccount(t *testing.T) {
