@@ -16,9 +16,28 @@ func formattedName(name xml.Name) string {
 	return s
 }
 
-func skipContent(d *xml.Decoder, start xml.StartElement) error {
+func skipSpace(d *xml.Decoder) (xml.Token, error) {
+	var zero xml.Token
 	for {
 		tok, err := d.RawToken()
+		if err != nil {
+			return zero, err
+		}
+		cd, ok := tok.(xml.CharData)
+		if !ok {
+			return tok, nil
+		}
+		for _, r := range string(cd) {
+			if !(r == '\t' || r == '\n' || r == '\r' || r == ' ') {
+				return tok, nil
+			}
+		}
+	}
+}
+
+func skipContent(d *xml.Decoder, start xml.StartElement) error {
+	for {
+		tok, err := skipSpace(d)
 		if err != nil {
 			return err
 		}
@@ -49,7 +68,7 @@ func findAttr(start xml.StartElement, name xml.Name) (int, error) {
 func findChildElement(d *xml.Decoder, parent xml.StartElement, name xml.Name) (xml.Token, error) {
 	var zero xml.Token
 	for {
-		tok, err := d.RawToken()
+		tok, err := skipSpace(d)
 		if err != nil {
 			return zero, err
 		}
@@ -72,19 +91,23 @@ func findChildElement(d *xml.Decoder, parent xml.StartElement, name xml.Name) (x
 }
 
 func parseTextElement(d *xml.Decoder, start xml.StartElement) (string, error) {
-	var text string
 	tok, err := d.RawToken()
 	if err != nil {
 		return "", err
 	}
-	if cd, ok := tok.(xml.CharData); ok {
-		text = string(cd)
-	} else {
+	cd, ok := tok.(xml.CharData)
+	if !ok {
 		return "", fmt.Errorf("Invalid token, expected character data")
 	}
-	err = skipContent(d, start)
+	text := string(cd)
+
+	tok, err = d.RawToken()
 	if err != nil {
 		return "", err
+	}
+	end, ok := tok.(xml.EndElement)
+	if !ok || end.Name != start.Name {
+		return "", fmt.Errorf("Invalid token, expected </%s>", formattedName(start.Name))
 	}
 	return text, nil
 }

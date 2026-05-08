@@ -26,13 +26,13 @@ func parseGDate(d *xml.Decoder, start xml.StartElement) (model.GDate, error) {
 func parseTimeSpec(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 	var zero time.Time
 
-	tok, err := d.RawToken()
+	tok, err := skipSpace(d)
 	if err != nil {
 		return zero, fmt.Errorf("parseTimeSpec: %w", err)
 	}
 	childStart, ok := tok.(xml.StartElement)
 	if !ok || childStart.Name != names.TimeDate() {
-		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <ts:date>")
+		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <%s>", names.TimeDate())
 	}
 	text, err := parseTextElement(d, childStart)
 	if err != nil {
@@ -43,14 +43,14 @@ func parseTimeSpec(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 		return zero, fmt.Errorf("parseTimeSpec: %w", err)
 	}
 
-	tok, err = d.RawToken()
+	tok, err = skipSpace(d)
 	if err != nil {
 		return zero, fmt.Errorf("parseTimeSpec: %w", err)
 	}
 	childStart, ok = tok.(xml.StartElement)
 	if ok {
 		if childStart.Name != names.TimeNs() {
-			return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <ts:ns>")
+			return zero, fmt.Errorf("parseTimeSpec: invalid token, expected <%s>", formattedName(names.TimeNs()))
 		}
 		text, err = parseTextElement(d, childStart)
 		if err != nil {
@@ -61,14 +61,14 @@ func parseTimeSpec(d *xml.Decoder, start xml.StartElement) (time.Time, error) {
 			return zero, fmt.Errorf("parseTimeSpec: invalid nanoseconds")
 		}
 		t = t.Add(time.Duration(ns))
-		tok, err = d.RawToken()
+		tok, err = skipSpace(d)
 		if err != nil {
 			return zero, fmt.Errorf("parseTimeSpec: %w", err)
 		}
 	}
 	end, ok := tok.(xml.EndElement)
 	if !ok || end.Name != start.Name {
-		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected </%s:%s>", start.Name.Space, start.Name.Local)
+		return zero, fmt.Errorf("parseTimeSpec: invalid token, expected </%s>", formattedName(start.Name))
 	}
 	return t, nil
 }
