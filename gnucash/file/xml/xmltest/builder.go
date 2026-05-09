@@ -85,12 +85,17 @@ func (b builder) TimeSpec(t time.Time) Builder {
 }
 
 func (b builder) Account(a model.Account) Builder {
-	return b.
+	b2 := b.
 		StartElement("gnc", "account").
 		TextElement("act", "name", nil, a.Name).
-		Guid("act", "id", a.Id).
-		Guid("act", "parent", a.Parent).
-		EndElement("gnc", "account")
+		Guid("act", "id", a.Id)
+	if a.HasDescription {
+		b2 = b2.TextElement("act", "description", nil, a.Description)
+	}
+	if a.HasParent {
+		b2 = b2.Guid("act", "parent", a.Parent)
+	}
+	return b2.EndElement("gnc", "account")
 }
 
 func (b builder) BuildDecoder() *xml.Decoder {

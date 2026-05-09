@@ -19,6 +19,7 @@ type Account struct {
 	Id             Guid
 	HasDescription bool
 	Description    string
+	HasParent      bool
 	Parent         Guid
 }
 
