@@ -3,6 +3,7 @@ package xml
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
 	"trial_balance/gnucash/file/xml/model"
 	"trial_balance/gnucash/file/xml/names"
 )
@@ -110,6 +111,26 @@ func parseTextElement(d *xml.Decoder, start xml.StartElement) (string, error) {
 		return "", fmt.Errorf("Invalid token, expected </%s>", formattedName(start.Name))
 	}
 	return text, nil
+}
+
+func parseCountData(d *xml.Decoder, start xml.StartElement) (string, int, error) {
+	i, err := findAttr(start, names.CdTypeAttr())
+	if err != nil {
+		return "", 0, fmt.Errorf("parseCountData: %w", err)
+	}
+	countType := start.Attr[i].Value
+	text, err := parseTextElement(d, start)
+	if err != nil {
+		return "", 0, fmt.Errorf("parseCountData: %w", err)
+	}
+	count, err := strconv.ParseInt(text, 10, 32)
+	if err != nil {
+		return "", 0, fmt.Errorf("parseCountData: %w", err)
+	}
+	if count < 0 {
+		return "", 0, fmt.Errorf("parseCountData: invalid count")
+	}
+	return countType, int(count), nil
 }
 
 func validateGuid(s string) error {
