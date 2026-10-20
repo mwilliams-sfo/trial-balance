@@ -3,16 +3,19 @@ package main
 import (
 	"fmt"
 	"os"
-	gcio "trial_balance/gnucash/io"
+	gc "trial_balance/gnucash"
 )
 
-func main() {
-	book, err := gcio.Read(
+func run() error {
+	_, err := gc.ReadFile(
 		"c:\\Users\\Myles\\Documents\\Finance\\Accounts\\Accounts.gnucash")
+	return err
+}
+
+func main() {
+	err := run()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Printf("Book id: %v\n", book.Id)
-	fmt.Printf("Book has %d transactions\n", len(book.Transactions))
 }
