@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"time"
 	xmlutil "trial_balance/gnucash/internal/file/xml/util"
 )
 
@@ -69,6 +70,63 @@ func (d *decoder) decodeGuid() (string, error) {
 		return "", fmt.Errorf("decodeGuid: %w", err)
 	}
 	return guid, nil
+}
+
+func (d *decoder) decodeTimeSpec() (time.Time, error) {
+	var zero time.Time
+
+	outerName := d.Token.(xml.StartElement).Name
+	err := d.skipSpace()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+	}
+	start, ok := d.Token.(xml.StartElement)
+	if !(ok && start.Name.Space == nsTs && start.Name.Local == "date") {
+		return zero, fmt.Errorf("decodeTimeSpec: Expected date", err)
+	}
+	err = d.token()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+	}
+	cd, ok := d.Token.(xml.CharData)
+	if !ok {
+		return zero, fmt.Errorf("decodeTimeSpec: Expected date string", err)
+	}
+	t, err := time.Parse("2006-01-02 15:04:05 -0700", string(cd))
+	if err != nil {
+		return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+	}
+	err = d.skipElement()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+	}
+
+	err = d.skipSpace()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+	}
+	if ok && start.Name.Space == nsTs && start.Name.Local == "ns" {
+		cd, ok := d.Token.(xml.CharData)
+		if !ok {
+			return zero, fmt.Errorf("decodeTimeSpec: Expected date string", err)
+		}
+		ns, err := strconv.Atoi(string(cd))
+		if err != nil {
+			return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+		}
+		if !(0 <= ns && ns <= 999999999) {
+			return zero, fmt.Errorf("decodeTimeSpec: Invalid nanoseconds value", err)
+		}
+		t = t.Add(time.Duration(ns))
+	}
+
+	if end, ok := d.Token.(xml.EndElement); !(ok && end.Name == outerName) {
+		err = d.skipElement()
+		if err != nil {
+			return zero, fmt.Errorf("decodeTimeSpec: %w", err)
+		}
+	}
+	return t, nil
 }
 
 func (d *decoder) decodeCount() (string, int, error) {
@@ -177,6 +235,55 @@ func (d *decoder) decodeAccount() (Account, error) {
 	return account, nil
 }
 
+func (d *decoder) decodeTransaction() (Transaction, error) {
+	var zero, trn Transaction
+
+	err := d.skipSpace()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTransaction: %w", err)
+	}
+	start, ok := d.Token.(xml.StartElement)
+	if !(ok && start.Name.Space == nsTrn && start.Name.Local == "id") {
+		return zero, fmt.Errorf("decodeTransaction: Expected id")
+	}
+	trn.Id, err = d.decodeGuid()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTransaction: %w", err)
+	}
+
+	for {
+		err := d.skipSpace()
+		if err != nil {
+			return zero, fmt.Errorf("decodeTransaction: %w", err)
+		}
+		start, ok := d.Token.(xml.StartElement)
+		if !(ok && start.Name.Space == nsTrn && (start.Name.Local == "currency" || start.Name.Local == "num")) {
+			break
+		}
+		err = d.skipElement()
+		if err != nil {
+			return zero, fmt.Errorf("decodeTransaction: %w", err)
+		}
+	}
+
+	start, ok = d.Token.(xml.StartElement)
+	if !(ok && start.Name.Space == nsTrn && start.Name.Local == "date-posted") {
+		return zero, fmt.Errorf("decodeTransaction: Expected date-posted")
+	}
+	trn.DatePosted, err = d.decodeTimeSpec()
+	if err != nil {
+		return zero, fmt.Errorf("decodeTransaction: %w", err)
+	}
+
+	if end, ok := d.Token.(xml.EndElement); !(ok && end.Name.Space == nsGnc && end.Name.Local == "transaction") {
+		err = d.skipElement()
+		if err != nil {
+			return zero, fmt.Errorf("decodeTransaction: %w", err)
+		}
+	}
+	return trn, nil
+}
+
 func (d *decoder) decodeBook() (Book, error) {
 	var zero, book Book
 
@@ -225,6 +332,8 @@ func (d *decoder) decodeBook() (Book, error) {
 		switch countType {
 		case "account":
 			book.Accounts = make([]Account, count)
+		case "transaction":
+			book.Transactions = make([]Transaction, count)
 		default:
 		}
 		err = d.skipSpace()
@@ -266,6 +375,24 @@ func (d *decoder) decodeBook() (Book, error) {
 		}
 	}
 	if start, ok := d.Token.(xml.StartElement); ok && start.Name.Space == nsGnc && start.Name.Local == "account" {
+		return zero, fmt.Errorf("decodeBook: Unexpected account")
+	}
+
+	for i := range len(book.Transactions) {
+		start, ok := d.Token.(xml.StartElement)
+		if !(ok && start.Name.Space == nsGnc && start.Name.Local == "transaction") {
+			return zero, fmt.Errorf("decodeBook: Expected transaction")
+		}
+		book.Transactions[i], err = d.decodeTransaction()
+		if err != nil {
+			return zero, fmt.Errorf("decodeBook: %w", err)
+		}
+		err = d.skipSpace()
+		if err != nil {
+			return zero, fmt.Errorf("decodeBook: %w", err)
+		}
+	}
+	if start, ok := d.Token.(xml.StartElement); ok && start.Name.Space == nsGnc && start.Name.Local == "transaction" {
 		return zero, fmt.Errorf("decodeBook: Unexpected account")
 	}
 

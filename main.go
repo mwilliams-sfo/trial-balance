@@ -58,10 +58,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	err = dumpAccountNames(book.Accounts)
-	if err != nil {
-		return err
-	}
+	fmt.Println(book)
 	return nil
 }
 

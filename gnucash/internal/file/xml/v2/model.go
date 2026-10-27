@@ -1,5 +1,9 @@
 package v2
 
+import (
+	"time"
+)
+
 type Account struct {
 	Name   string
 	Id     string
@@ -7,7 +11,8 @@ type Account struct {
 }
 
 type Transaction struct {
-	Id string
+	Id         string
+	DatePosted time.Time
 }
 
 type Book struct {

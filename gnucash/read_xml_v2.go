@@ -31,6 +31,14 @@ func decodeXmlV2(d *xml.Decoder) (Book, error) {
 			}
 		}
 	}
+
 	book.Transactions = make([]Transaction, len(v2Book.Transactions))
+	for i, v2Trn := range v2Book.Transactions {
+		book.Transactions[i] = Transaction{
+			Id:         v2Trn.Id,
+			DatePosted: v2Trn.DatePosted,
+		}
+	}
+
 	return book, nil
 }
