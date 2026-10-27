@@ -41,7 +41,7 @@ func (d *Decoder) skipElement() error {
 	return d.XmlDecoder.Skip()
 }
 
-func (d *Decoder) decodeId() (string, string, error) {
+func (d *Decoder) decodeGuid() (string, error) {
 	start := d.Token.(xml.StartElement)
 	var idType string
 	for i := 0; ; i++ {
@@ -52,30 +52,29 @@ func (d *Decoder) decodeId() (string, string, error) {
 				break
 			}
 		} else {
-			return "", "", fmt.Errorf("decodeId: Expected type attribute")
+			return "", fmt.Errorf("decodeGuid: Expected type attribute")
 		}
 	}
-	if idType == "guid" {
-		err := d.token()
-		if err != nil {
-			return "", "", fmt.Errorf("decodeId: %w", err)
-		}
-		cd, ok := d.Token.(xml.CharData)
-		if !ok {
-			return "", "", fmt.Errorf("decodeId: Expected GUID")
-		}
-		guid := string(cd)
-		if !guidRe.MatchString(guid) {
-			return "", "", fmt.Errorf("decodeId: Invalid GUID")
-		}
-		err = d.skipElement()
-		if err != nil {
-			return "", "", fmt.Errorf("decodeId: %w", err)
-		}
-		return idType, guid, nil
-	} else {
-		return "", "", fmt.Errorf("decodeId: Invalid id type")
+	if idType != "guid" {
+		return "", fmt.Errorf("decodeGuid: Expected GUID")
 	}
+	err := d.token()
+	if err != nil {
+		return "", fmt.Errorf("decodeGuid: %w", err)
+	}
+	cd, ok := d.Token.(xml.CharData)
+	if !ok {
+		return "", fmt.Errorf("decodeGuid: Expected GUID text")
+	}
+	guid := string(cd)
+	if !guidRe.MatchString(guid) {
+		return "", fmt.Errorf("decodeGuid: Invalid GUID")
+	}
+	err = d.skipElement()
+	if err != nil {
+		return "", fmt.Errorf("decodeGuid: %w", err)
+	}
+	return guid, nil
 }
 
 func (d *Decoder) decodeCount() (string, int, error) {
@@ -116,15 +115,20 @@ func (d *Decoder) decodeCount() (string, int, error) {
 
 func (d *Decoder) decodeBook() (*Book, error) {
 	book := &Book{}
+
 	err := d.skipSpace()
 	if err != nil {
 		return nil, fmt.Errorf("decodeBook: %w", err)
 	}
 	start, ok := d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsBook && start.Name.Local == "id") {
-		return nil, fmt.Errorf("decodeBook: Expected book:id")
+		return nil, fmt.Errorf("decodeBook: Expected id")
 	}
-	_, book.Id, err = d.decodeId()
+	book.Id, err = d.decodeGuid()
+	if err != nil {
+		return nil, fmt.Errorf("decodeBook: %w", err)
+	}
+	err = d.skipSpace()
 	if err != nil {
 		return nil, fmt.Errorf("decodeBook: %w", err)
 	}
