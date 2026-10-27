@@ -45,7 +45,7 @@ func decode(d *xml.Decoder) (*Book, error) {
 	}
 	switch {
 	case start.Name.Space == "" && start.Name.Local == "gnc-v2":
-		return &Book{}, nil
+		return decodeXmlV2(d, start)
 	default:
 		return nil, fmt.Errorf("Unrecognized file format")
 	}
