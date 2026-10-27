@@ -2,6 +2,7 @@ package gnucash
 
 import (
 	"encoding/xml"
+	"fmt"
 	xmlv2 "trial_balance/gnucash/internal/file/xml/v2"
 )
 
@@ -11,5 +12,24 @@ func decodeXmlV2(d *xml.Decoder, start xml.StartElement) (*Book, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Book{Id: v2Book.Id}, nil
+
+	book := &Book{Id: v2Book.Id}
+	book.Accounts = make([]Account, len(v2Book.Accounts))
+	accountMap := make(map[string]*Account)
+	for i := range len(v2Book.Accounts) {
+		book.Accounts[i].Name = v2Book.Accounts[i].Name
+		book.Accounts[i].Id = v2Book.Accounts[i].Id
+		accountMap[book.Accounts[i].Id] = &book.Accounts[i]
+	}
+	for i, v2Account := range v2Book.Accounts {
+		if v2Account.Parent != "" {
+			var ok bool
+			book.Accounts[i].Parent, ok = accountMap[v2Account.Parent]
+			if !ok {
+				return nil, fmt.Errorf("Invalid account parent ID")
+			}
+		}
+	}
+	book.Transactions = make([]Transaction, len(v2Book.Transactions))
+	return book, nil
 }

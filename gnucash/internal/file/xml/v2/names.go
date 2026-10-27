@@ -2,6 +2,7 @@ package v2
 
 const (
 	nsGnc  = "http://www.gnucash.org/XML/gnc"
+	nsAct  = "http://www.gnucash.org/XML/act"
 	nsBook = "http://www.gnucash.org/XML/book"
 	nsCd   = "http://www.gnucash.org/XML/cd"
 )
