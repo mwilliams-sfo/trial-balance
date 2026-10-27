@@ -6,17 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	xmlutil "trial_balance/gnucash/internal/file/xml/util"
 )
-
-func isXmlSpace(s string) bool {
-	for _, r := range s {
-		if !strings.ContainsRune("\t\n\r ", r) {
-			return false
-		}
-	}
-	return true
-}
 
 func decode(d *xml.Decoder) (*Book, error) {
 	tok, err := d.Token()
@@ -32,7 +23,7 @@ func decode(d *xml.Decoder) (*Book, error) {
 		return nil, err
 	}
 	if cd, ok := tok.(xml.CharData); ok {
-		if isXmlSpace(string(cd)) {
+		if xmlutil.IsXmlSpace(string(cd)) {
 			tok, err = d.Token()
 			if err != nil {
 				return nil, err

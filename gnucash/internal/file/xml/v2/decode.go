@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
+	xmlutil "trial_balance/gnucash/internal/file/xml/util"
 )
 
 var guidRe = regexp.MustCompile("\\A[0-9a-f]{32}\\z")
@@ -13,15 +13,6 @@ var guidRe = regexp.MustCompile("\\A[0-9a-f]{32}\\z")
 type Decoder struct {
 	XmlDecoder *xml.Decoder
 	Token      xml.Token
-}
-
-func isXmlSpace(s string) bool {
-	for _, r := range s {
-		if !strings.ContainsRune("\t\n\r ", r) {
-			return false
-		}
-	}
-	return true
 }
 
 func (d *Decoder) token() error {
@@ -36,7 +27,7 @@ func (d *Decoder) skipSpace() error {
 		return fmt.Errorf("skipSpace: %w", err)
 	}
 	cd, ok := d.Token.(xml.CharData)
-	if ok && isXmlSpace(string(cd)) {
+	if ok && xmlutil.IsXmlSpace(string(cd)) {
 		err := d.token()
 		if err != nil {
 			return fmt.Errorf("skipSpace: %w", err)
