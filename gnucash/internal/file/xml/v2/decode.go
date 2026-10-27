@@ -10,18 +10,19 @@ import (
 
 var guidRe = regexp.MustCompile("\\A[0-9a-f]{32}\\z")
 
-type Decoder struct {
+type decoder struct {
 	XmlDecoder *xml.Decoder
 	Token      xml.Token
 }
 
-func (d *Decoder) token() error {
+func (d *decoder) token() error {
 	var err error
 	d.Token, err = d.XmlDecoder.Token()
 	return err
 }
 
-func (d *Decoder) skipSpace() error {
+func (d *decoder) skipSpace() error {
+	d.Token = nil
 	err := d.token()
 	if err != nil {
 		return fmt.Errorf("skipSpace: %w", err)
@@ -36,12 +37,12 @@ func (d *Decoder) skipSpace() error {
 	return nil
 }
 
-func (d *Decoder) skipElement() error {
+func (d *decoder) skipElement() error {
 	d.Token = nil
 	return d.XmlDecoder.Skip()
 }
 
-func (d *Decoder) decodeGuid() (string, error) {
+func (d *decoder) decodeGuid() (string, error) {
 	start := d.Token.(xml.StartElement)
 	var idType string
 	idType, ok := xmlutil.GetAttr(start, xml.Name{Local: "type"})
@@ -70,7 +71,7 @@ func (d *Decoder) decodeGuid() (string, error) {
 	return guid, nil
 }
 
-func (d *Decoder) decodeCount() (string, int, error) {
+func (d *decoder) decodeCount() (string, int, error) {
 	start, ok := d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsGnc && start.Name.Local == "count-data") {
 		return "", 0, fmt.Errorf("decodeCount: Expected count-data")
@@ -98,7 +99,7 @@ func (d *Decoder) decodeCount() (string, int, error) {
 	return countType, count, nil
 }
 
-func (d *Decoder) decodeAccount() (Account, error) {
+func (d *decoder) decodeAccount() (Account, error) {
 	var zero, account Account
 
 	err := d.skipSpace()
@@ -176,7 +177,7 @@ func (d *Decoder) decodeAccount() (Account, error) {
 	return account, nil
 }
 
-func (d *Decoder) decodeBook() (Book, error) {
+func (d *decoder) decodeBook() (Book, error) {
 	var zero, book Book
 
 	err := d.skipSpace()
@@ -278,43 +279,51 @@ func (d *Decoder) decodeBook() (Book, error) {
 	return book, nil
 }
 
-func (d *Decoder) DecodeFile() (Book, error) {
+func (d *decoder) decode() (Book, error) {
 	var zero Book
 
 	err := d.skipSpace()
 	if err != nil {
-		return zero, fmt.Errorf("DecodeFile: %w", err)
+		return zero, err
 	}
 	if _, ok := d.Token.(xml.EndElement); ok {
-		return zero, fmt.Errorf("DecodeFile: Expected count-data")
+		return zero, fmt.Errorf("Expected count-data")
 	}
 	countType, count, err := d.decodeCount()
 	if err != nil {
-		return zero, fmt.Errorf("DecodeFile: %w", err)
+		return zero, err
 	}
 	if countType != "book" {
-		return zero, fmt.Errorf("DecodeFile: Expected book count")
+		return zero, fmt.Errorf("Expected book count")
 	}
 	if count != 1 {
-		return zero, fmt.Errorf("DecodeFile: Invalid book count")
+		return zero, fmt.Errorf("Invalid book count")
 	}
 
 	err = d.skipSpace()
 	if err != nil {
-		return zero, fmt.Errorf("DecodeFile: %w", err)
+		return zero, err
 	}
 	start, ok := d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsGnc && start.Name.Local == "book") {
-		return zero, fmt.Errorf("DecodeFile: Expected book element")
+		return zero, fmt.Errorf("Expected book element")
 	}
 	book, err := d.decodeBook()
 	if err != nil {
-		return zero, fmt.Errorf("DecodeFile: %w", err)
+		return zero, err
 	}
 
 	err = d.skipElement()
 	if err != nil {
-		return zero, fmt.Errorf("DecodeFile: %w", err)
+		return zero, err
+	}
+	return book, nil
+}
+
+func Decode(d *xml.Decoder) (Book, error) {
+	book, err := (&decoder{XmlDecoder: d}).decode()
+	if err != nil {
+		return Book{}, fmt.Errorf("Decode: %w", err)
 	}
 	return book, nil
 }

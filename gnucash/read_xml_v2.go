@@ -9,8 +9,7 @@ import (
 func decodeXmlV2(d *xml.Decoder) (Book, error) {
 	var zero Book
 
-	v2Decoder := &xmlv2.Decoder{XmlDecoder: d}
-	v2Book, err := v2Decoder.DecodeFile()
+	v2Book, err := xmlv2.Decode(d)
 	if err != nil {
 		return zero, err
 	}
