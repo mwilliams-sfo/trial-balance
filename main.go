@@ -7,9 +7,13 @@ import (
 )
 
 func run() error {
-	_, err := gc.ReadFile(
+	book, err := gc.ReadFile(
 		"c:\\Users\\Myles\\Documents\\Finance\\Accounts\\Accounts.gnucash")
-	return err
+	if err != nil {
+		return err
+	}
+	fmt.Println(book)
+	return nil
 }
 
 func main() {
