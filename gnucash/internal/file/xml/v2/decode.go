@@ -98,48 +98,48 @@ func (d *Decoder) decodeCount() (string, int, error) {
 	return countType, count, nil
 }
 
-func (d *Decoder) decodeAccount() (*Account, error) {
-	account := &Account{}
+func (d *Decoder) decodeAccount() (Account, error) {
+	var zero, account Account
 
 	err := d.skipSpace()
 	if err != nil {
-		return nil, fmt.Errorf("decodeAccount: %w", err)
+		return zero, fmt.Errorf("decodeAccount: %w", err)
 	}
 	start, ok := d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsAct && start.Name.Local == "name") {
-		return nil, fmt.Errorf("decodeAccount: Expected name")
+		return zero, fmt.Errorf("decodeAccount: Expected name")
 	}
 	err = d.token()
 	if err != nil {
-		return nil, fmt.Errorf("decodeAccount: %w", err)
+		return zero, fmt.Errorf("decodeAccount: %w", err)
 	}
 	cd, ok := d.Token.(xml.CharData)
 	if !ok {
-		return nil, fmt.Errorf("decodeAccount: Expected name text")
+		return zero, fmt.Errorf("decodeAccount: Expected name text")
 	}
 	account.Name = string(cd)
 	err = d.skipElement()
 	if err != nil {
-		return nil, fmt.Errorf("decodeAccount: %w", err)
+		return zero, fmt.Errorf("decodeAccount: %w", err)
 	}
 
 	err = d.skipSpace()
 	if err != nil {
-		return nil, fmt.Errorf("decodeAccount: %w", err)
+		return zero, fmt.Errorf("decodeAccount: %w", err)
 	}
 	start, ok = d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsAct && start.Name.Local == "id") {
-		return nil, fmt.Errorf("decodeAccount: Expected id")
+		return zero, fmt.Errorf("decodeAccount: Expected id")
 	}
 	account.Id, err = d.decodeGuid()
 	if err != nil {
-		return nil, fmt.Errorf("decodeAccount: %w", err)
+		return zero, fmt.Errorf("decodeAccount: %w", err)
 	}
 
 	for {
 		err = d.skipSpace()
 		if err != nil {
-			return nil, fmt.Errorf("decodeAccount: %w", err)
+			return zero, fmt.Errorf("decodeAccount: %w", err)
 		}
 		start, ok = d.Token.(xml.StartElement)
 		if ok && start.Name.Space == nsAct && (start.Name.Local == "type" ||
@@ -152,7 +152,7 @@ func (d *Decoder) decodeAccount() (*Account, error) {
 
 			err = d.skipElement()
 			if err != nil {
-				return nil, fmt.Errorf("decodeAccount: %w", err)
+				return zero, fmt.Errorf("decodeAccount: %w", err)
 			}
 		} else {
 			break
@@ -163,37 +163,37 @@ func (d *Decoder) decodeAccount() (*Account, error) {
 	if ok && start.Name.Space == nsAct && start.Name.Local == "parent" {
 		account.Parent, err = d.decodeGuid()
 		if err != nil {
-			return nil, fmt.Errorf("decodeAccount: %w", err)
+			return zero, fmt.Errorf("decodeAccount: %w", err)
 		}
 	}
 
 	if end, ok := d.Token.(xml.EndElement); !(ok && end.Name.Space == nsGnc && end.Name.Local == "account") {
 		err = d.skipElement()
 		if err != nil {
-			return nil, fmt.Errorf("decodeAccount: %w", err)
+			return zero, fmt.Errorf("decodeAccount: %w", err)
 		}
 	}
 	return account, nil
 }
 
-func (d *Decoder) decodeBook() (*Book, error) {
-	book := &Book{}
+func (d *Decoder) decodeBook() (Book, error) {
+	var zero, book Book
 
 	err := d.skipSpace()
 	if err != nil {
-		return nil, fmt.Errorf("decodeBook: %w", err)
+		return zero, fmt.Errorf("decodeBook: %w", err)
 	}
 	start, ok := d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsBook && start.Name.Local == "id") {
-		return nil, fmt.Errorf("decodeBook: Expected id")
+		return zero, fmt.Errorf("decodeBook: Expected id")
 	}
 	book.Id, err = d.decodeGuid()
 	if err != nil {
-		return nil, fmt.Errorf("decodeBook: %w", err)
+		return zero, fmt.Errorf("decodeBook: %w", err)
 	}
 	err = d.skipSpace()
 	if err != nil {
-		return nil, fmt.Errorf("decodeBook: %w", err)
+		return zero, fmt.Errorf("decodeBook: %w", err)
 	}
 
 	for {
@@ -204,11 +204,11 @@ func (d *Decoder) decodeBook() (*Book, error) {
 
 		err = d.skipElement()
 		if err != nil {
-			return nil, fmt.Errorf("decodeBook: %w", err)
+			return zero, fmt.Errorf("decodeBook: %w", err)
 		}
 		err = d.skipSpace()
 		if err != nil {
-			return nil, fmt.Errorf("decodeBook: %w", err)
+			return zero, fmt.Errorf("decodeBook: %w", err)
 		}
 	}
 
@@ -219,16 +219,16 @@ func (d *Decoder) decodeBook() (*Book, error) {
 		}
 		countType, count, err := d.decodeCount()
 		if err != nil {
-			return nil, fmt.Errorf("decodeBook: %w", err)
+			return zero, fmt.Errorf("decodeBook: %w", err)
 		}
 		switch countType {
 		case "account":
-			book.Accounts = make([]*Account, count)
+			book.Accounts = make([]Account, count)
 		default:
 		}
 		err = d.skipSpace()
 		if err != nil {
-			return nil, fmt.Errorf("decodeBook: %w", err)
+			return zero, fmt.Errorf("decodeBook: %w", err)
 		}
 	}
 
@@ -239,68 +239,82 @@ func (d *Decoder) decodeBook() (*Book, error) {
 
 			err = d.skipElement()
 			if err != nil {
-				return nil, fmt.Errorf("decodeBook: %w", err)
+				return zero, fmt.Errorf("decodeBook: %w", err)
 			}
 			err = d.skipSpace()
 			if err != nil {
-				return nil, fmt.Errorf("decodeBook: %w", err)
+				return zero, fmt.Errorf("decodeBook: %w", err)
 			}
 		} else {
 			break
 		}
 	}
 
-	for i := 0; ; i++ {
+	for i := range len(book.Accounts) {
 		start, ok := d.Token.(xml.StartElement)
-		if ok && start.Name.Space == nsGnc && start.Name.Local == "account" {
-			if i < len(book.Accounts) {
-				book.Accounts[i], err = d.decodeAccount()
-				if err != nil {
-					return nil, fmt.Errorf("decodeBook: %w", err)
-				}
-				err = d.skipSpace()
-				if err != nil {
-					return nil, fmt.Errorf("decodeBook: %w", err)
-				}
-			} else {
-				return nil, fmt.Errorf("decodeBook: Too many accounts")
-			}
-		} else if i < len(book.Accounts) {
-			return nil, fmt.Errorf("decodeBook: Expected account")
-		} else {
-			break
+		if !(ok && start.Name.Space == nsGnc && start.Name.Local == "account") {
+			return zero, fmt.Errorf("decodeBook: Expected account")
+		}
+		book.Accounts[i], err = d.decodeAccount()
+		if err != nil {
+			return zero, fmt.Errorf("decodeBook: %w", err)
+		}
+		err = d.skipSpace()
+		if err != nil {
+			return zero, fmt.Errorf("decodeBook: %w", err)
+		}
+	}
+	if start, ok := d.Token.(xml.StartElement); ok && start.Name.Space == nsGnc && start.Name.Local == "account" {
+		return zero, fmt.Errorf("decodeBook: Unexpected account")
+	}
+
+	if end, ok := d.Token.(xml.EndElement); !(ok && end.Name.Space == nsGnc && end.Name.Local == "book") {
+		err := d.skipElement()
+		if err != nil {
+			return zero, fmt.Errorf("decodeBook: %w", err)
 		}
 	}
 
 	return book, nil
 }
 
-func (d *Decoder) DecodeFile() (*Book, error) {
+func (d *Decoder) DecodeFile() (Book, error) {
+	var zero Book
+
 	err := d.skipSpace()
 	if err != nil {
-		return nil, fmt.Errorf("DecodeFile: %w", err)
+		return zero, fmt.Errorf("DecodeFile: %w", err)
 	}
 	if _, ok := d.Token.(xml.EndElement); ok {
-		return nil, fmt.Errorf("DecodeFile: Expected count-data")
+		return zero, fmt.Errorf("DecodeFile: Expected count-data")
 	}
 	countType, count, err := d.decodeCount()
 	if err != nil {
-		return nil, fmt.Errorf("DecodeFile: %w", err)
+		return zero, fmt.Errorf("DecodeFile: %w", err)
 	}
 	if countType != "book" {
-		return nil, fmt.Errorf("DecodeFile: Expected book count")
+		return zero, fmt.Errorf("DecodeFile: Expected book count")
 	}
 	if count != 1 {
-		return nil, fmt.Errorf("DecodeFile: Invalid book count")
+		return zero, fmt.Errorf("DecodeFile: Invalid book count")
 	}
 
 	err = d.skipSpace()
 	if err != nil {
-		return nil, fmt.Errorf("DecodeFile: %w", err)
+		return zero, fmt.Errorf("DecodeFile: %w", err)
 	}
 	start, ok := d.Token.(xml.StartElement)
 	if !(ok && start.Name.Space == nsGnc && start.Name.Local == "book") {
-		return nil, fmt.Errorf("DecodeFile: Expected book element")
+		return zero, fmt.Errorf("DecodeFile: Expected book element")
 	}
-	return d.decodeBook()
+	book, err := d.decodeBook()
+	if err != nil {
+		return zero, fmt.Errorf("DecodeFile: %w", err)
+	}
+
+	err = d.skipElement()
+	if err != nil {
+		return zero, fmt.Errorf("DecodeFile: %w", err)
+	}
+	return book, nil
 }

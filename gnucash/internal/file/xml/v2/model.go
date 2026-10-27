@@ -12,6 +12,6 @@ type Transaction struct {
 
 type Book struct {
 	Id           string
-	Accounts     []*Account
-	Transactions []*Transaction
+	Accounts     []Account
+	Transactions []Transaction
 }
