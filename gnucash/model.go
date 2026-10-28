@@ -2,6 +2,7 @@ package gnucash
 
 import (
 	"time"
+	num "trial_balance/gnucash/numeric"
 )
 
 type Account struct {
@@ -12,7 +13,7 @@ type Account struct {
 
 type Split struct {
 	Id    string
-	Value Numeric
+	Value num.Numeric
 }
 
 type Transaction struct {
