@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
 	gc "trial_balance/gnucash"
+	num "trial_balance/gnucash/numeric"
 )
 
 func accountName(a gc.Account) []string {
@@ -52,13 +54,47 @@ func dumpAccountNames(accounts []gc.Account) error {
 	return nil
 }
 
+func trialBalances(w io.Writer, transactions []gc.Transaction) {
+	sorted := make([]gc.Transaction, len(transactions))
+	copy(sorted, transactions)
+	slices.SortStableFunc(sorted, func(a, b gc.Transaction) int {
+		aTime := a.DatePosted
+		bTime := b.DatePosted
+		switch {
+		case aTime.Before(bTime):
+			return -1
+		case bTime.Before(aTime):
+			return 1
+		default:
+			return 0
+		}
+	})
+
+	debits := num.Int(0)
+	credits := num.Int(0)
+	for _, trn := range sorted {
+		for _, split := range trn.Splits {
+			sign := split.Value.Sign()
+			switch {
+			case sign > 0:
+				debits = debits.Plus(split.Value)
+			case sign < 0:
+				credits = credits.Plus(split.Value.Negate())
+			}
+		}
+		fmt.Fprintf(w, "%v %20.02f %20.02f\n",
+			trn.DatePosted.Local().Format("2006-01-02 15:04:05.999999999"),
+			debits.Float64(), credits.Float64())
+	}
+}
+
 func run() error {
 	book, err := gc.ReadFile(
 		"c:\\Users\\Myles\\Documents\\Finance\\Accounts\\Accounts.gnucash")
 	if err != nil {
 		return err
 	}
-	fmt.Println(book)
+	trialBalances(os.Stdout, book.Transactions)
 	return nil
 }
 
