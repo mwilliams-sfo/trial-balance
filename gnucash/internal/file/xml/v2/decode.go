@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	xmlutil "trial_balance/gnucash/internal/file/xml/util"
 )
 
 var guidRe = regexp.MustCompile("\\A[0-9a-f]{32}\\z")
+var numericRe = regexp.MustCompile("\\A-?[0-9]+/-?[0-9]+\\z")
 
 type decoder struct {
 	XmlDecoder *xml.Decoder
@@ -234,6 +236,79 @@ func (d *decoder) decodeAccount() (Account, error) {
 	return account, nil
 }
 
+func (d *decoder) decodeSplit() (Split, error) {
+	var zero, split Split
+
+	err := d.skipSpace()
+	if err != nil {
+		return zero, fmt.Errorf("decodeSplit: %w", err)
+	}
+	start, ok := d.Token.(xml.StartElement)
+	if ok && start.Name.Space == nsSplit && start.Name.Local == "id" {
+		split.Id, err = d.decodeGuid()
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+	} else {
+		return zero, fmt.Errorf("decodeSplit: Expected id")
+	}
+
+	for {
+		err := d.skipSpace()
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+		start, ok := d.Token.(xml.StartElement)
+		if ok && start.Name.Space == nsSplit &&
+			(start.Name.Local == "memo" ||
+				start.Name.Local == "action" ||
+				start.Name.Local == "reconciled-state" ||
+				start.Name.Local == "reconcile-date") {
+			err = d.skipElement()
+			if err != nil {
+				return zero, fmt.Errorf("decodeSplit: %w", err)
+			}
+		} else {
+			break
+		}
+	}
+
+	start, ok = d.Token.(xml.StartElement)
+	if ok && start.Name.Space == nsSplit && start.Name.Local == "value" {
+		err := d.token()
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+		cd, ok := d.Token.(xml.CharData)
+		if !(ok && numericRe.MatchString(string(cd))) {
+			return zero, fmt.Errorf("decodeSplit: Expected numeric string")
+		}
+		fields := strings.SplitN(string(cd), "/", 2)
+		split.Value.Num, err = strconv.ParseInt(fields[0], 10, 64)
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+		split.Value.Den, err = strconv.ParseInt(fields[1], 10, 64)
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+		err = d.skipElement()
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+	} else {
+		return zero, fmt.Errorf("decodeSplit: Expected value")
+	}
+
+	if end, ok := d.Token.(xml.EndElement); !(ok && end.Name.Space == nsTrn && end.Name.Local == "split") {
+		err = d.skipElement()
+		if err != nil {
+			return zero, fmt.Errorf("decodeSplit: %w", err)
+		}
+	}
+	return split, nil
+}
+
 func (d *decoder) decodeTransaction() (Transaction, error) {
 	var zero, trn Transaction
 
@@ -288,8 +363,7 @@ func (d *decoder) decodeTransaction() (Transaction, error) {
 		if ok && start.Name.Space == nsTrn &&
 			(start.Name.Local == "date-entered" ||
 				start.Name.Local == "description" ||
-				start.Name.Local == "slots" ||
-				start.Name.Local == "splits") {
+				start.Name.Local == "slots") {
 
 			err = d.skipElement()
 			if err != nil {
@@ -297,6 +371,31 @@ func (d *decoder) decodeTransaction() (Transaction, error) {
 			}
 		} else {
 			break
+		}
+	}
+
+	start, ok = d.Token.(xml.StartElement)
+	if ok && start.Name.Space == nsTrn && start.Name.Local == "splits" {
+		for {
+			err := d.skipSpace()
+			if err != nil {
+				return zero, fmt.Errorf("decodeTransaction: %w", err)
+			}
+			start, ok = d.Token.(xml.StartElement)
+			if ok && start.Name.Space == nsTrn && start.Name.Local == "split" {
+				split, err := d.decodeSplit()
+				if err != nil {
+					return zero, fmt.Errorf("decodeTransaction: %w", err)
+				}
+				trn.Splits = append(trn.Splits, split)
+			} else if len(trn.Splits) == 0 {
+				return zero, fmt.Errorf("decodeTransaction: Expected split")
+			} else {
+				break
+			}
+		}
+		if end, ok := d.Token.(xml.EndElement); !(ok && end.Name.Space == nsTrn && end.Name.Local == "splits") {
+			return zero, fmt.Errorf("decodeTransaction: Expected splits")
 		}
 	}
 

@@ -37,6 +37,13 @@ func decodeXmlV2(d *xml.Decoder) (Book, error) {
 		book.Transactions[i] = Transaction{
 			Id:         v2Trn.Id,
 			DatePosted: v2Trn.DatePosted,
+			Splits:     make([]Split, len(v2Trn.Splits)),
+		}
+		for j, v2Split := range v2Trn.Splits {
+			book.Transactions[i].Splits[j] = Split{
+				Id:    v2Split.Id,
+				Value: Numeric{Num: v2Split.Value.Num, Den: v2Split.Value.Den},
+			}
 		}
 	}
 

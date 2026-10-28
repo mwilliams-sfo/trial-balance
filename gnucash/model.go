@@ -11,9 +11,8 @@ type Account struct {
 }
 
 type Split struct {
-	Id               string
-	Amount, Quantity Numeric
-	Account          string
+	Id    string
+	Value Numeric
 }
 
 type Transaction struct {
